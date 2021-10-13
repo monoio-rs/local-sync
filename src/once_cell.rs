@@ -374,18 +374,6 @@ impl<T> OnceCell<T> {
     }
 }
 
-// Since `get` gives us access to immutable references of the OnceCell, OnceCell
-// can only be Sync if T is Sync, otherwise OnceCell would allow sharing
-// references of !Sync values across threads. We need T to be Send in order for
-// OnceCell to by Sync because we can use `set` on `&OnceCell<T>` to send values
-// (of type T) across threads.
-unsafe impl<T: Sync + Send> Sync for OnceCell<T> {}
-
-// Access to OnceCell's value is guarded by the semaphore permit
-// and atomic operations on `value_set`, so as long as T itself is Send
-// it's safe to send it to another thread
-unsafe impl<T: Send> Send for OnceCell<T> {}
-
 /// Errors that can be returned from [`OnceCell::set`].
 ///
 /// [`OnceCell::set`]: crate::sync::OnceCell::set
@@ -431,14 +419,20 @@ impl<T> SetError<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::ptr::NonNull;
+
     use super::OnceCell;
 
     #[frosty::test]
     async fn test_once_cell() {
-        static ONCE: OnceCell<u32> = OnceCell::new();
-
+        thread_local! {
+            static ONCE: OnceCell<u32> = OnceCell::new();
+        }
         async fn get_global_integer() -> &'static u32 {
-            ONCE.get_or_init(|| async { 1 + 1 }).await
+            let once = ONCE.with(|once| unsafe {
+                NonNull::new_unchecked(once as *const _ as *mut OnceCell<u32>).as_ref()
+            });
+            once.get_or_init(|| async { 1 + 1 }).await
         }
 
         assert_eq!(*get_global_integer().await, 2);
