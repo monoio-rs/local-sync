@@ -1,5 +1,7 @@
 //! Semaphore borrowed from tokio.
 
+#![allow(unused)]
+
 use core::future::Future;
 use std::{
     cell::{RefCell, UnsafeCell},
@@ -560,6 +562,20 @@ pub struct OwnedSemaphorePermit {
     permits: u32,
 }
 
+pub struct AcquireResult<'a>(Acquire<'a>, &'a Semaphore, u32);
+
+impl<'a> Future for AcquireResult<'a> {
+    type Output = Result<SemaphorePermit<'a>, AcquireError>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let sem = self.1;
+        let permits = self.2;
+        let inner = unsafe { self.map_unchecked_mut(|me| &mut me.0) };
+        futures_util::ready!(inner.poll(cx))?;
+        Poll::Ready(Ok(SemaphorePermit { sem, permits }))
+    }
+}
+
 impl Semaphore {
     /// Creates a new semaphore with the initial number of permits.
     pub const fn new(permits: usize) -> Self {
@@ -612,12 +628,9 @@ impl Semaphore {
     ///
     /// [`AcquireError`]: crate::sync::AcquireError
     /// [`SemaphorePermit`]: crate::sync::SemaphorePermit
-    pub async fn acquire(&self) -> Result<SemaphorePermit<'_>, AcquireError> {
-        self.0.acquire(1).await?;
-        Ok(SemaphorePermit {
-            sem: self,
-            permits: 1,
-        })
+    pub fn acquire(&self) -> AcquireResult<'_> {
+        let acq = self.0.acquire(1);
+        AcquireResult(acq, self, 1)
     }
 
     /// Acquires `n` permits from the semaphore.
@@ -648,12 +661,9 @@ impl Semaphore {
     ///
     /// [`AcquireError`]: crate::sync::AcquireError
     /// [`SemaphorePermit`]: crate::sync::SemaphorePermit
-    pub async fn acquire_many(&self, n: u32) -> Result<SemaphorePermit<'_>, AcquireError> {
-        self.0.acquire(n).await?;
-        Ok(SemaphorePermit {
-            sem: self,
-            permits: n,
-        })
+    pub fn acquire_many(&self, n: u32) -> AcquireResult<'_> {
+        let acq = self.0.acquire(n);
+        AcquireResult(acq, self, n)
     }
 
     /// Tries to acquire a permit from the semaphore.
@@ -771,7 +781,9 @@ impl Semaphore {
     /// [`Arc`]: std::sync::Arc
     /// [`AcquireError`]: crate::sync::AcquireError
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
-    pub async fn acquire_owned(self: std::rc::Rc<Self>) -> Result<OwnedSemaphorePermit, AcquireError> {
+    pub async fn acquire_owned(
+        self: std::rc::Rc<Self>,
+    ) -> Result<OwnedSemaphorePermit, AcquireError> {
         self.0.acquire(1).await?;
         Ok(OwnedSemaphorePermit {
             sem: self,
@@ -864,7 +876,9 @@ impl Semaphore {
     /// [`TryAcquireError::Closed`]: crate::sync::TryAcquireError::Closed
     /// [`TryAcquireError::NoPermits`]: crate::sync::TryAcquireError::NoPermits
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
-    pub fn try_acquire_owned(self: std::rc::Rc<Self>) -> Result<OwnedSemaphorePermit, TryAcquireError> {
+    pub fn try_acquire_owned(
+        self: std::rc::Rc<Self>,
+    ) -> Result<OwnedSemaphorePermit, TryAcquireError> {
         match self.0.try_acquire(1) {
             Ok(_) => Ok(OwnedSemaphorePermit {
                 sem: self,
@@ -987,7 +1001,7 @@ impl Drop for OwnedSemaphorePermit {
 
 #[cfg(test)]
 mod tests {
-    use super::Inner;
+    use super::{Inner, Semaphore};
 
     #[frosty::test]
     async fn inner_works() {
@@ -1008,5 +1022,12 @@ mod tests {
         });
         s.release(2);
         join.await;
+    }
+
+    #[frosty::test]
+    async fn it_works() {
+        let s = Semaphore::new(0);
+        s.add_permits(1);
+        let _ = s.acquire().await.unwrap();
     }
 }

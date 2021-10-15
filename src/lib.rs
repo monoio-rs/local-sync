@@ -3,14 +3,14 @@ mod linked_list;
 mod wake_list;
 mod semaphore;
 
-// channel
-mod mpsc;
+// Semaphore
+pub use semaphore::Semaphore;
+// BoundedChannel and UnboundedChannel
+pub mod mpsc;
 
-// oneshot
+// OneshotChannel
 pub mod oneshot;
 
-// once_cell
+// OnceCell
 mod once_cell;
 pub use once_cell::{OnceCell, SetError};
-
-mod list;

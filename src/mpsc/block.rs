@@ -59,19 +59,16 @@ pub(crate) struct Queue<T> {
     tail: NonNull<Block<T>>,
     /// Data length
     len: usize,
-    /// Capacity(0 means unbounded)
-    cap: usize,
 }
 
 impl<T> Queue<T> {
-    pub(crate) fn new(cap: Option<usize>) -> Self {
+    pub(crate) fn new() -> Self {
         let block = Box::new(Block::new());
         let ptr = unsafe { NonNull::new_unchecked(Box::into_raw(block)) };
         Self {
             head: ptr,
             tail: ptr,
             len: 0,
-            cap: cap.unwrap_or_default(),
         }
     }
 
@@ -81,11 +78,6 @@ impl<T> Queue<T> {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.len == 0
-    }
-
-    /// is_full always returns false for unbounded queue.
-    pub(crate) fn is_full(&self) -> bool {
-        self.cap == 0 || self.len < self.cap
     }
 
     /// Push data into queue.
@@ -116,7 +108,7 @@ impl<T> Queue<T> {
     }
 
     /// Pop data out.
-    /// Safety: Make sure there is still some data inside.
+    /// # Safety: Make sure there is still some data inside.
     pub(crate) unsafe fn pop_unchecked(&mut self) -> T {
         // Read data and update block read index
         let blk = self.head.as_mut();
@@ -141,7 +133,7 @@ impl<T> Queue<T> {
     }
 
     /// Free all blocks.
-    /// # Safety: Free blocks and drop.
+    /// # Safety: Free blocks and drop. Must make sure you drop all elements first.
     pub(crate) unsafe fn free_blocks(&mut self) {
         debug_assert_ne!(self.head, NonNull::dangling());
         let mut cur = Some(self.head);
@@ -166,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_simple_push_pop() {
-        let mut queue = Queue::new(Some(12));
+        let mut queue = Queue::new();
         unsafe {
             queue.push_unchecked(1);
             queue.push_unchecked(2);
@@ -181,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_across_block_push_pop() {
-        let mut queue = Queue::new(Some(1024));
+        let mut queue = Queue::new();
         unsafe {
             for i in 0..4 {
                 for idx in 0..1024 {

@@ -5,6 +5,7 @@
 //! The data structure supports tracking pinned nodes. Most of the data
 //! structure's APIs are `unsafe` as they require the caller to ensure the
 //! specified node is actually contained by the list.
+#![allow(unused)]
 
 use core::cell::UnsafeCell;
 use core::fmt;
