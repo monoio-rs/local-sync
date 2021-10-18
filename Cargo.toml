@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "Non-threadsafe data structure for async usage"
 authors = ["ihciah <ihciah@gmail.com>"]
 repository = "https://github.com/ihciah/local-sync"
-keywords = ["sync", "mpsc", "channel", "local", "futures", "local-channel"]
+keywords = ["sync", "channel", "local", "futures", "local-channel"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
@@ -14,4 +14,4 @@ futures-sink = { version = "0.3", default-features = false }
 futures-util = { version = "0.3", default-features = false }
 
 [dev-dependencies]
-frosty = { git = "https://code.byted.org/rust-lang/frosty", features=["macros"] }
+frosty = { version = "0.0.3", features = ["macros"] }
