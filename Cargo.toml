@@ -12,7 +12,6 @@ edition = "2018"
 futures-core = { version = "0.3", default-features = false }
 futures-sink = { version = "0.3", default-features = false }
 futures-util = { version = "0.3", default-features = false }
-local-waker = "0.1"
 
 [dev-dependencies]
 frosty = { git = "https://code.byted.org/rust-lang/frosty", features=["macros"] }

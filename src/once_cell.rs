@@ -41,11 +41,16 @@ use crate::semaphore::{Semaphore, SemaphorePermit, TryAcquireError};
 ///     1 + 1
 /// }
 ///
-/// static ONCE: OnceCell<u32> = OnceCell::const_new();
+/// thread_local! {
+///     static ONCE: OnceCell<u32> = OnceCell::new();
+/// }
 ///
 /// #[frosty::main]
 /// async fn main() {
-///     let result = ONCE.get_or_init(some_computation).await;
+///     let once = ONCE.with(|once| unsafe {
+///         std::ptr::NonNull::new_unchecked(once as *const _ as *mut OnceCell<u32>).as_ref()
+///     });
+///     let result = once.get_or_init(some_computation).await;
 ///     assert_eq!(*result, 2);
 /// }
 /// ```
@@ -55,10 +60,15 @@ use crate::semaphore::{Semaphore, SemaphorePermit, TryAcquireError};
 /// ```
 /// use local_sync::OnceCell;
 ///
-/// static ONCE: OnceCell<u32> = OnceCell::const_new();
+/// thread_local! {
+///     static ONCE: OnceCell<u32> = OnceCell::new();
+/// }
 ///
 /// async fn get_global_integer() -> &'static u32 {
-///     ONCE.get_or_init(|| async {
+///     let once = ONCE.with(|once| unsafe {
+///         std::ptr::NonNull::new_unchecked(once as *const _ as *mut OnceCell<u32>).as_ref()
+///     });
+///     once.get_or_init(|| async {
 ///         1 + 1
 ///     }).await
 /// }
@@ -424,7 +434,7 @@ mod tests {
     use super::OnceCell;
 
     #[frosty::test]
-    async fn test_once_cell() {
+    async fn test_once_cell_global() {
         thread_local! {
             static ONCE: OnceCell<u32> = OnceCell::new();
         }
@@ -437,5 +447,12 @@ mod tests {
 
         assert_eq!(*get_global_integer().await, 2);
         assert_eq!(*get_global_integer().await, 2);
+    }
+
+    #[frosty::test]
+    async fn test_once_cell() {
+        let once: OnceCell<u32> = OnceCell::new();
+        assert_eq!(once.get_or_init(|| async { 1 + 1 }).await, &2);
+        assert_eq!(once.get_or_init(|| async { 1 + 2 }).await, &2);
     }
 }

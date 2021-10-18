@@ -79,13 +79,6 @@ struct Waiter {
     /// # Safety
     ///
     /// This may only be accessed while the wait queue is locked.
-    ///
-    /// TODO: Ideally, we would be able to use loom to enforce that
-    /// this isn't accessed concurrently. However, it is difficult to
-    /// use a `UnsafeCell` here, since the `Link` trait requires _returning_
-    /// references to `Pointers`, and `UnsafeCell` requires that checked access
-    /// take place inside a closure. We should consider changing `Pointers` to
-    /// use `UnsafeCell` internally.
     pointers: linked_list::Pointers<Waiter>,
 
     /// Should not be `Unpin`.
@@ -310,6 +303,7 @@ impl Inner {
         // Clear permits and assign it.
         let mut permits = *curr;
         *curr = 0;
+        drop(curr);
         if node.assign_permits(&mut permits) {
             // TODO: may never be here?
             self.add_permits(permits);
@@ -491,9 +485,9 @@ impl std::error::Error for TryAcquireError {}
 /// Basic usage:
 ///
 /// ```
-/// use tokio::sync::{Semaphore, TryAcquireError};
+/// use local_sync::semaphore::{Semaphore, TryAcquireError};
 ///
-/// #[tokio::main]
+/// #[frosty::main]
 /// async fn main() {
 ///     let semaphore = Semaphore::new(3);
 ///
@@ -510,17 +504,17 @@ impl std::error::Error for TryAcquireError {}
 /// Use [`Semaphore::acquire_owned`] to move permits across tasks:
 ///
 /// ```
-/// use std::sync::Arc;
-/// use tokio::sync::Semaphore;
+/// use std::rc::Rc;
+/// use local_sync::semaphore::Semaphore;
 ///
-/// #[tokio::main]
+/// #[frosty::main]
 /// async fn main() {
-///     let semaphore = Arc::new(Semaphore::new(3));
+///     let semaphore = Rc::new(Semaphore::new(3));
 ///     let mut join_handles = Vec::new();
 ///
 ///     for _ in 0..5 {
 ///         let permit = semaphore.clone().acquire_owned().await.unwrap();
-///         join_handles.push(tokio::spawn(async move {
+///         join_handles.push(frosty::spawn(async move {
 ///             // perform task...
 ///             // explicitly own `permit` in the task
 ///             drop(permit);
@@ -528,7 +522,7 @@ impl std::error::Error for TryAcquireError {}
 ///     }
 ///
 ///     for handle in join_handles {
-///         handle.await.unwrap();
+///         handle.await;
 ///     }
 /// }
 /// ```
@@ -609,9 +603,9 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::Semaphore;
+    /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let semaphore = Semaphore::new(2);
     ///
@@ -648,9 +642,9 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::Semaphore;
+    /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let semaphore = Semaphore::new(5);
     ///
@@ -675,7 +669,7 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::{Semaphore, TryAcquireError};
+    /// use local_sync::semaphore::{Semaphore, TryAcquireError};
     ///
     /// # fn main() {
     /// let semaphore = Semaphore::new(2);
@@ -713,7 +707,7 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::{Semaphore, TryAcquireError};
+    /// use local_sync::semaphore::{Semaphore, TryAcquireError};
     ///
     /// # fn main() {
     /// let semaphore = Semaphore::new(4);
@@ -741,7 +735,7 @@ impl Semaphore {
 
     /// Acquires a permit from the semaphore.
     ///
-    /// The semaphore must be wrapped in an [`Arc`] to call this method.
+    /// The semaphore must be wrapped in an [`Rc`] to call this method.
     /// If the semaphore has been closed, this returns an [`AcquireError`].
     /// Otherwise, this returns a [`OwnedSemaphorePermit`] representing the
     /// acquired permit.
@@ -755,17 +749,17 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    /// use tokio::sync::Semaphore;
+    /// use std::rc::Rc;
+    /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
-    ///     let semaphore = Arc::new(Semaphore::new(3));
+    ///     let semaphore = Rc::new(Semaphore::new(3));
     ///     let mut join_handles = Vec::new();
     ///
     ///     for _ in 0..5 {
     ///         let permit = semaphore.clone().acquire_owned().await.unwrap();
-    ///         join_handles.push(tokio::spawn(async move {
+    ///         join_handles.push(frosty::spawn(async move {
     ///             // perform task...
     ///             // explicitly own `permit` in the task
     ///             drop(permit);
@@ -773,12 +767,12 @@ impl Semaphore {
     ///     }
     ///
     ///     for handle in join_handles {
-    ///         handle.await.unwrap();
+    ///         handle.await;
     ///     }
     /// }
     /// ```
     ///
-    /// [`Arc`]: std::sync::Arc
+    /// [`Rc`]: std::sync::Rc
     /// [`AcquireError`]: crate::sync::AcquireError
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
     pub async fn acquire_owned(
@@ -793,7 +787,7 @@ impl Semaphore {
 
     /// Acquires `n` permits from the semaphore.
     ///
-    /// The semaphore must be wrapped in an [`Arc`] to call this method.
+    /// The semaphore must be wrapped in an [`Rc`] to call this method.
     /// If the semaphore has been closed, this returns an [`AcquireError`].
     /// Otherwise, this returns a [`OwnedSemaphorePermit`] representing the
     /// acquired permit.
@@ -807,17 +801,17 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    /// use tokio::sync::Semaphore;
+    /// use std::rc::Rc;
+    /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
-    ///     let semaphore = Arc::new(Semaphore::new(10));
+    ///     let semaphore = Rc::new(Semaphore::new(10));
     ///     let mut join_handles = Vec::new();
     ///
     ///     for _ in 0..5 {
     ///         let permit = semaphore.clone().acquire_many_owned(2).await.unwrap();
-    ///         join_handles.push(tokio::spawn(async move {
+    ///         join_handles.push(frosty::spawn(async move {
     ///             // perform task...
     ///             // explicitly own `permit` in the task
     ///             drop(permit);
@@ -825,12 +819,12 @@ impl Semaphore {
     ///     }
     ///
     ///     for handle in join_handles {
-    ///         handle.await.unwrap();
+    ///         handle.await;
     ///     }
     /// }
     /// ```
     ///
-    /// [`Arc`]: std::sync::Arc
+    /// [`Rc`]: std::sync::Rc
     /// [`AcquireError`]: crate::sync::AcquireError
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
     pub async fn acquire_many_owned(
@@ -846,7 +840,7 @@ impl Semaphore {
 
     /// Tries to acquire a permit from the semaphore.
     ///
-    /// The semaphore must be wrapped in an [`Arc`] to call this method. If
+    /// The semaphore must be wrapped in an [`Rc`] to call this method. If
     /// the semaphore has been closed, this returns a [`TryAcquireError::Closed`]
     /// and a [`TryAcquireError::NoPermits`] if there are no permits left.
     /// Otherwise, this returns a [`OwnedSemaphorePermit`] representing the
@@ -855,16 +849,16 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    /// use tokio::sync::{Semaphore, TryAcquireError};
+    /// use std::rc::Rc;
+    /// use local_sync::semaphore::{Semaphore, TryAcquireError};
     ///
     /// # fn main() {
-    /// let semaphore = Arc::new(Semaphore::new(2));
+    /// let semaphore = Rc::new(Semaphore::new(2));
     ///
-    /// let permit_1 = Arc::clone(&semaphore).try_acquire_owned().unwrap();
+    /// let permit_1 = Rc::clone(&semaphore).try_acquire_owned().unwrap();
     /// assert_eq!(semaphore.available_permits(), 1);
     ///
-    /// let permit_2 = Arc::clone(&semaphore).try_acquire_owned().unwrap();
+    /// let permit_2 = Rc::clone(&semaphore).try_acquire_owned().unwrap();
     /// assert_eq!(semaphore.available_permits(), 0);
     ///
     /// let permit_3 = semaphore.try_acquire_owned();
@@ -872,7 +866,7 @@ impl Semaphore {
     /// # }
     /// ```
     ///
-    /// [`Arc`]: std::sync::Arc
+    /// [`Rc`]: std::sync::Rc
     /// [`TryAcquireError::Closed`]: crate::sync::TryAcquireError::Closed
     /// [`TryAcquireError::NoPermits`]: crate::sync::TryAcquireError::NoPermits
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
@@ -890,7 +884,7 @@ impl Semaphore {
 
     /// Tries to acquire `n` permits from the semaphore.
     ///
-    /// The semaphore must be wrapped in an [`Arc`] to call this method. If
+    /// The semaphore must be wrapped in an [`Rc`] to call this method. If
     /// the semaphore has been closed, this returns a [`TryAcquireError::Closed`]
     /// and a [`TryAcquireError::NoPermits`] if there are no permits left.
     /// Otherwise, this returns a [`OwnedSemaphorePermit`] representing the
@@ -899,13 +893,13 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    /// use tokio::sync::{Semaphore, TryAcquireError};
+    /// use std::rc::Rc;
+    /// use local_sync::semaphore::{Semaphore, TryAcquireError};
     ///
     /// # fn main() {
-    /// let semaphore = Arc::new(Semaphore::new(4));
+    /// let semaphore = Rc::new(Semaphore::new(4));
     ///
-    /// let permit_1 = Arc::clone(&semaphore).try_acquire_many_owned(3).unwrap();
+    /// let permit_1 = Rc::clone(&semaphore).try_acquire_many_owned(3).unwrap();
     /// assert_eq!(semaphore.available_permits(), 1);
     ///
     /// let permit_2 = semaphore.try_acquire_many_owned(2);
@@ -913,7 +907,7 @@ impl Semaphore {
     /// # }
     /// ```
     ///
-    /// [`Arc`]: std::sync::Arc
+    /// [`Rc`]: std::sync::Rc
     /// [`TryAcquireError::Closed`]: crate::sync::TryAcquireError::Closed
     /// [`TryAcquireError::NoPermits`]: crate::sync::TryAcquireError::NoPermits
     /// [`OwnedSemaphorePermit`]: crate::sync::OwnedSemaphorePermit
@@ -937,16 +931,15 @@ impl Semaphore {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::Semaphore;
-    /// use std::sync::Arc;
-    /// use tokio::sync::TryAcquireError;
+    /// use local_sync::semaphore::{Semaphore, TryAcquireError};
+    /// use std::rc::Rc;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
-    ///     let semaphore = Arc::new(Semaphore::new(1));
+    ///     let semaphore = Rc::new(Semaphore::new(1));
     ///     let semaphore2 = semaphore.clone();
     ///
-    ///     tokio::spawn(async move {
+    ///     frosty::spawn(async move {
     ///         let permit = semaphore.acquire_many(2).await;
     ///         assert!(permit.is_err());
     ///         println!("waiter received error");

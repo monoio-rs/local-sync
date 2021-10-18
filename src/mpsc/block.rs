@@ -1,15 +1,11 @@
-#![allow(unused)]
-
-use std::borrow::Borrow;
 use std::cell::UnsafeCell;
-use std::collections::VecDeque;
 use std::mem::MaybeUninit;
-use std::ptr::{null, null_mut, NonNull};
+use std::ptr::NonNull;
 
 const BLOCK_CAP: usize = 32;
 pub(crate) struct Block<T> {
     /// The next block in the linked list.
-    next: UnsafeCell<*mut Block<T>>,
+    next: Option<NonNull<Block<T>>>,
 
     /// Array containing values pushed into the block.
     values: [UnsafeCell<MaybeUninit<T>>; BLOCK_CAP],
@@ -23,30 +19,31 @@ pub(crate) struct Block<T> {
 
 impl<T> Block<T> {
     pub(crate) fn new() -> Self {
-        let vals = unsafe { MaybeUninit::uninit() };
+        let vals = MaybeUninit::uninit();
         Self {
-            next: UnsafeCell::new(null_mut()),
+            next: None,
             values: unsafe { vals.assume_init() },
             begin: 0,
             end: 0,
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn len(&self) -> usize {
         self.end - self.begin
     }
 
+    #[allow(unused)]
     pub(crate) fn is_empty(&self) -> bool {
         self.end == self.begin
     }
 
-    pub(crate) fn next(&self) -> Option<NonNull<Block<T>>> {
-        let ptr = unsafe { *self.next.get() };
-        NonNull::new(ptr)
+    pub(crate) fn can_write(&self) -> bool {
+        self.end < BLOCK_CAP
     }
 
     pub(crate) unsafe fn reset(&mut self) {
-        *self.next.get_mut() = null_mut();
+        self.next = None;
         self.begin = 0;
         self.end = 0;
     }
@@ -81,7 +78,7 @@ impl<T> Queue<T> {
     }
 
     /// Push data into queue.
-    /// Safety: Make sure the current capacity is allowed.
+    /// # Safety: Make sure the current capacity is allowed.
     pub(crate) unsafe fn push_unchecked(&mut self, value: T) {
         // Write data and update block end index
         let blk = self.tail.as_mut();
@@ -92,15 +89,15 @@ impl<T> Queue<T> {
 
         // Update queue length and make sure tail point to a valid block(not full)
         self.len += 1;
-        if blk.end == BLOCK_CAP {
-            if let Some(ptr) = blk.next() {
+        if !blk.can_write() {
+            if let Some(ptr) = blk.next {
                 // just move the tail ptr
                 self.tail = ptr;
             } else {
                 // alloc a new block
                 let block = Box::new(Block::new());
-                let ptr = unsafe { NonNull::new_unchecked(Box::into_raw(block)) };
-                *blk.next.get_mut() = ptr.as_ptr();
+                let ptr = NonNull::new_unchecked(Box::into_raw(block));
+                blk.next = Some(ptr);
                 // move the tail ptr
                 self.tail = ptr;
             }
@@ -112,6 +109,7 @@ impl<T> Queue<T> {
     pub(crate) unsafe fn pop_unchecked(&mut self) -> T {
         // Read data and update block read index
         let blk = self.head.as_mut();
+        debug_assert!(!blk.is_empty(), "head block is empty while pop_unchecked");
         let offset = blk.begin;
         blk.begin += 1;
         let ptr = blk.values[offset].get();
@@ -121,13 +119,13 @@ impl<T> Queue<T> {
         self.len -= 1;
         if blk.begin == BLOCK_CAP {
             // Update head of queue.
-            self.head = blk.next().expect("internal error");
+            self.head = blk.next.expect("no next block while pop_unchecked");
             // Move block to the tail and reset it.
             let tail = self.tail.as_mut();
-            let free_blocks = *tail.next.get_mut();
+            let free_blocks = tail.next;
             blk.reset();
-            *blk.next.get_mut() = free_blocks;
-            *tail.next.get_mut() = blk;
+            blk.next = free_blocks;
+            tail.next = Some(NonNull::new_unchecked(blk));
         }
         value
     }
@@ -146,7 +144,7 @@ impl<T> Queue<T> {
         }
 
         while let Some(block) = cur {
-            cur = block.as_ref().next();
+            cur = block.as_ref().next;
             drop(Box::from_raw(block.as_ptr()));
         }
     }
@@ -175,7 +173,7 @@ mod tests {
     fn test_across_block_push_pop() {
         let mut queue = Queue::new();
         unsafe {
-            for i in 0..4 {
+            for _ in 0..4 {
                 for idx in 0..1024 {
                     queue.push_unchecked(idx);
                     assert_eq!(queue.len(), idx + 1);

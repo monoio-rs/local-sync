@@ -294,7 +294,6 @@ impl<T> fmt::Debug for Pointers<T> {
 }
 
 #[cfg(test)]
-#[cfg(not(loom))]
 mod tests {
     use super::*;
 

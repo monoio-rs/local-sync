@@ -1,4 +1,4 @@
-//! One shot imol borrowed from tokio.
+//! Oneshot borrowed from tokio.
 //!
 //! A one-shot channel is used for sending a single message between
 //! asynchronous tasks. The [`channel`] function is used to create a
@@ -12,13 +12,13 @@
 //! # Examples
 //!
 //! ```
-//! use tokio::sync::oneshot;
+//! use local_sync::oneshot;
 //!
-//! #[tokio::main]
+//! #[frosty::main]
 //! async fn main() {
 //!     let (tx, rx) = oneshot::channel();
 //!
-//!     tokio::spawn(async move {
+//!     frosty::spawn(async move {
 //!         if let Err(_) = tx.send(3) {
 //!             println!("the receiver dropped");
 //!         }
@@ -35,13 +35,13 @@
 //! [`error::RecvError`]:
 //!
 //! ```
-//! use tokio::sync::oneshot;
+//! use local_sync::oneshot;
 //!
-//! #[tokio::main]
+//! #[frosty::main]
 //! async fn main() {
 //!     let (tx, rx) = oneshot::channel::<u32>();
 //!
-//!     tokio::spawn(async move {
+//!     frosty::spawn(async move {
 //!         drop(tx);
 //!     });
 //!
@@ -78,13 +78,13 @@ pub struct Sender<T> {
 /// # Examples
 ///
 /// ```
-/// use tokio::sync::oneshot;
+/// use local_sync::oneshot;
 ///
-/// #[tokio::main]
+/// #[frosty::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel();
 ///
-///     tokio::spawn(async move {
+///     frosty::spawn(async move {
 ///         if let Err(_) = tx.send(3) {
 ///             println!("the receiver dropped");
 ///         }
@@ -101,13 +101,13 @@ pub struct Sender<T> {
 /// [`error::RecvError`]:
 ///
 /// ```
-/// use tokio::sync::oneshot;
+/// use local_sync::oneshot;
 ///
-/// #[tokio::main]
+/// #[frosty::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel::<u32>();
 ///
-///     tokio::spawn(async move {
+///     frosty::spawn(async move {
 ///         drop(tx);
 ///     });
 ///
@@ -226,13 +226,13 @@ struct State(usize);
 /// # Examples
 ///
 /// ```
-/// use tokio::sync::oneshot;
+/// use local_sync::oneshot;
 ///
-/// #[tokio::main]
+/// #[frosty::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel();
 ///
-///     tokio::spawn(async move {
+///     frosty::spawn(async move {
 ///         if let Err(_) = tx.send(3) {
 ///             println!("the receiver dropped");
 ///         }
@@ -283,13 +283,13 @@ impl<T> Sender<T> {
     /// Send a value to another task
     ///
     /// ```
-    /// use tokio::sync::oneshot;
+    /// use local_sync::oneshot;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, rx) = oneshot::channel();
     ///
-    ///     tokio::spawn(async move {
+    ///     frosty::spawn(async move {
     ///         if let Err(_) = tx.send(3) {
     ///             println!("the receiver dropped");
     ///         }
@@ -337,13 +337,13 @@ impl<T> Sender<T> {
     /// Basic usage
     ///
     /// ```
-    /// use tokio::sync::oneshot;
+    /// use local_sync::oneshot;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (mut tx, rx) = oneshot::channel::<()>();
     ///
-    ///     tokio::spawn(async move {
+    ///     frosty::spawn(async move {
     ///         drop(rx);
     ///     });
     ///
@@ -355,20 +355,20 @@ impl<T> Sender<T> {
     /// Paired with select
     ///
     /// ```
-    /// use tokio::sync::oneshot;
-    /// use tokio::time::{self, Duration};
+    /// use local_sync::oneshot;
+    /// use frosty::time::{self, Duration};
     ///
     /// async fn compute() -> String {
     ///     // Complex computation returning a `String`
     /// # "hello".to_string()
     /// }
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (mut tx, rx) = oneshot::channel();
     ///
-    ///     tokio::spawn(async move {
-    ///         tokio::select! {
+    ///     frosty::spawn(async move {
+    ///         frosty::select! {
     ///             _ = tx.closed() => {
     ///                 // The receiver dropped, no need to do any further work
     ///             }
@@ -403,9 +403,9 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::oneshot;
+    /// use local_sync::oneshot;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, rx) = oneshot::channel();
     ///
@@ -447,15 +447,15 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// use tokio::sync::oneshot;
+    /// use local_sync::oneshot;
     ///
-    /// use futures::future::poll_fn;
+    /// use futures_util::future::poll_fn;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (mut tx, mut rx) = oneshot::channel::<()>();
     ///
-    ///     tokio::spawn(async move {
+    ///     frosty::spawn(async move {
     ///         rx.close();
     ///     });
     ///
@@ -537,10 +537,10 @@ impl<T> Receiver<T> {
     /// Prevent a value from being sent
     ///
     /// ```
-    /// use tokio::sync::oneshot;
-    /// use tokio::sync::oneshot::error::TryRecvError;
+    /// use local_sync::oneshot;
+    /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -561,9 +561,9 @@ impl<T> Receiver<T> {
     /// Receive a value sent **before** calling `close`
     ///
     /// ```
-    /// use tokio::sync::oneshot;
+    /// use local_sync::oneshot;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -602,10 +602,10 @@ impl<T> Receiver<T> {
     /// `try_recv` before a value is sent, then after.
     ///
     /// ```
-    /// use tokio::sync::oneshot;
-    /// use tokio::sync::oneshot::error::TryRecvError;
+    /// use local_sync::oneshot;
+    /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -628,10 +628,10 @@ impl<T> Receiver<T> {
     /// `try_recv` when the sender dropped before sending a value
     ///
     /// ```
-    /// use tokio::sync::oneshot;
-    /// use tokio::sync::oneshot::error::TryRecvError;
+    /// use local_sync::oneshot;
+    /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[tokio::main]
+    /// #[frosty::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel::<()>();
     ///
@@ -825,9 +825,6 @@ impl State {
     }
 
     fn set_complete(cell: &RefCell<usize>) -> State {
-        // TODO: This could be `Release`, followed by an `Acquire` fence *if*
-        // the `RX_TASK_SET` flag is set. However, `loom` does not support
-        // fences yet.
         let mut val = cell.borrow_mut();
         *val |= VALUE_SENT;
         State(*val)

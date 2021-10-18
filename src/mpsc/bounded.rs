@@ -1,10 +1,7 @@
-use std::task::{Context, Poll};
-
-use futures_util::future::poll_fn;
-
+use super::chan::{self, SendError, TryRecvError};
 use crate::semaphore::Inner;
-
-use super::chan::{self, SendError};
+use futures_util::future::poll_fn;
+use std::task::{Context, Poll};
 
 #[derive(Clone)]
 pub struct Tx<T>(chan::Tx<T, Inner>);
@@ -25,6 +22,14 @@ impl<T> Tx<T> {
         }
         self.0.send(value)
     }
+
+    pub fn is_closed(&self) -> bool {
+        self.0.is_closed()
+    }
+
+    pub fn same_channel(&self, other: &Self) -> bool {
+        self.0.same_channel(&other.0)
+    }
 }
 
 impl<T> Rx<T> {
@@ -34,6 +39,14 @@ impl<T> Rx<T> {
 
     pub fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
         self.0.recv(cx)
+    }
+
+    pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
+        self.0.try_recv()
+    }
+
+    pub fn close(&mut self) {
+        self.0.close()
     }
 }
 
