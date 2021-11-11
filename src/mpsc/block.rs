@@ -8,7 +8,7 @@ pub(crate) struct Block<T> {
     next: Option<NonNull<Block<T>>>,
 
     /// Array containing values pushed into the block.
-    values: [UnsafeCell<MaybeUninit<T>>; BLOCK_CAP],
+    values: UnsafeCell<[MaybeUninit<T>; BLOCK_CAP]>,
 
     /// Head index.
     begin: usize,
@@ -19,10 +19,9 @@ pub(crate) struct Block<T> {
 
 impl<T> Block<T> {
     pub(crate) fn new() -> Self {
-        let vals = MaybeUninit::uninit();
         Self {
             next: None,
-            values: unsafe { vals.assume_init() },
+            values: UnsafeCell::new(unsafe { MaybeUninit::uninit().assume_init() }),
             begin: 0,
             end: 0,
         }
@@ -84,8 +83,7 @@ impl<T> Queue<T> {
         let blk = self.tail.as_mut();
         let offset = blk.end;
         blk.end += 1;
-        let ptr = blk.values[offset].get();
-        ptr.write(MaybeUninit::new(value));
+        (*blk.values.get())[offset] = MaybeUninit::new(value);
 
         // Update queue length and make sure tail point to a valid block(not full)
         self.len += 1;
@@ -112,8 +110,7 @@ impl<T> Queue<T> {
         debug_assert!(!blk.is_empty(), "head block is empty while pop_unchecked");
         let offset = blk.begin;
         blk.begin += 1;
-        let ptr = blk.values[offset].get();
-        let value = ptr.read().assume_init();
+        let value = std::mem::replace(&mut (*blk.values.get())[offset], MaybeUninit::uninit());
 
         // Update queue length and try to recycle the head block if its empty.
         self.len -= 1;
@@ -127,7 +124,7 @@ impl<T> Queue<T> {
             blk.next = free_blocks;
             tail.next = Some(NonNull::new_unchecked(blk));
         }
-        value
+        value.assume_init()
     }
 
     /// Free all blocks.

@@ -17,9 +17,12 @@ pub fn channel<T>(buffer: usize) -> (Tx<T>, Rx<T>) {
 impl<T> Tx<T> {
     pub async fn send(&self, value: T) -> Result<(), SendError> {
         // acquire semaphore first
-        if self.0.chan.semaphore.acquire(1).await.is_err() {
-            return Err(SendError::RxClosed);
-        }
+        self.0
+            .chan
+            .semaphore
+            .acquire(1)
+            .await
+            .map_err(|_| SendError::RxClosed)?;
         self.0.send(value)
     }
 

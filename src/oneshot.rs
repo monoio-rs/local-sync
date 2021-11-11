@@ -897,9 +897,7 @@ mod tests {
     #[frosty::test]
     async fn it_works() {
         let (tx, rx) = channel();
-        let join = frosty::spawn(async move {
-            rx.await
-        });
+        let join = frosty::spawn(async move { rx.await });
         tx.send(1).unwrap();
         assert_eq!(join.await.unwrap(), 1);
     }

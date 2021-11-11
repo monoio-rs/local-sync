@@ -26,7 +26,7 @@ pub struct Unlimited {
 
 impl Unlimited {
     pub fn new() -> Self {
-        Self{
+        Self {
             closed: UnsafeCell::new(false),
         }
     }
