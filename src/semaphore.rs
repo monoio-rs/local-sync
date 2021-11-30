@@ -301,7 +301,7 @@ impl Inner {
         }
 
         // Clear permits and assign it.
-        let mut permits = *curr;
+        let mut permits = *curr >> Self::PERMIT_SHIFT;
         *curr = 0;
         drop(curr);
         if node.assign_permits(&mut permits) {
