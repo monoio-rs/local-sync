@@ -45,7 +45,7 @@ use crate::semaphore::{Semaphore, SemaphorePermit, TryAcquireError};
 ///     static ONCE: OnceCell<u32> = OnceCell::new();
 /// }
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let once = ONCE.with(|once| unsafe {
 ///         std::ptr::NonNull::new_unchecked(once as *const _ as *mut OnceCell<u32>).as_ref()
@@ -73,7 +73,7 @@ use crate::semaphore::{Semaphore, SemaphorePermit, TryAcquireError};
 ///     }).await
 /// }
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let result = get_global_integer().await;
 ///     assert_eq!(*result, 2);
@@ -433,7 +433,7 @@ mod tests {
 
     use super::OnceCell;
 
-    #[frosty::test]
+    #[monoio::test]
     async fn test_once_cell_global() {
         thread_local! {
             static ONCE: OnceCell<u32> = OnceCell::new();
@@ -449,7 +449,7 @@ mod tests {
         assert_eq!(*get_global_integer().await, 2);
     }
 
-    #[frosty::test]
+    #[monoio::test]
     async fn test_once_cell() {
         let once: OnceCell<u32> = OnceCell::new();
         assert_eq!(once.get_or_init(|| async { 1 + 1 }).await, &2);

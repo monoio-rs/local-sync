@@ -487,7 +487,7 @@ impl std::error::Error for TryAcquireError {}
 /// ```
 /// use local_sync::semaphore::{Semaphore, TryAcquireError};
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let semaphore = Semaphore::new(3);
 ///
@@ -507,14 +507,14 @@ impl std::error::Error for TryAcquireError {}
 /// use std::rc::Rc;
 /// use local_sync::semaphore::Semaphore;
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let semaphore = Rc::new(Semaphore::new(3));
 ///     let mut join_handles = Vec::new();
 ///
 ///     for _ in 0..5 {
 ///         let permit = semaphore.clone().acquire_owned().await.unwrap();
-///         join_handles.push(frosty::spawn(async move {
+///         join_handles.push(monoio::spawn(async move {
 ///             // perform task...
 ///             // explicitly own `permit` in the task
 ///             drop(permit);
@@ -605,7 +605,7 @@ impl Semaphore {
     /// ```
     /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let semaphore = Semaphore::new(2);
     ///
@@ -644,7 +644,7 @@ impl Semaphore {
     /// ```
     /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let semaphore = Semaphore::new(5);
     ///
@@ -752,14 +752,14 @@ impl Semaphore {
     /// use std::rc::Rc;
     /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let semaphore = Rc::new(Semaphore::new(3));
     ///     let mut join_handles = Vec::new();
     ///
     ///     for _ in 0..5 {
     ///         let permit = semaphore.clone().acquire_owned().await.unwrap();
-    ///         join_handles.push(frosty::spawn(async move {
+    ///         join_handles.push(monoio::spawn(async move {
     ///             // perform task...
     ///             // explicitly own `permit` in the task
     ///             drop(permit);
@@ -804,14 +804,14 @@ impl Semaphore {
     /// use std::rc::Rc;
     /// use local_sync::semaphore::Semaphore;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let semaphore = Rc::new(Semaphore::new(10));
     ///     let mut join_handles = Vec::new();
     ///
     ///     for _ in 0..5 {
     ///         let permit = semaphore.clone().acquire_many_owned(2).await.unwrap();
-    ///         join_handles.push(frosty::spawn(async move {
+    ///         join_handles.push(monoio::spawn(async move {
     ///             // perform task...
     ///             // explicitly own `permit` in the task
     ///             drop(permit);
@@ -934,12 +934,12 @@ impl Semaphore {
     /// use local_sync::semaphore::{Semaphore, TryAcquireError};
     /// use std::rc::Rc;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let semaphore = Rc::new(Semaphore::new(1));
     ///     let semaphore2 = semaphore.clone();
     ///
-    ///     frosty::spawn(async move {
+    ///     monoio::spawn(async move {
     ///         let permit = semaphore.acquire_many(2).await;
     ///         assert!(permit.is_err());
     ///         println!("waiter received error");
@@ -996,7 +996,7 @@ impl Drop for OwnedSemaphorePermit {
 mod tests {
     use super::{Inner, Semaphore};
 
-    #[frosty::test]
+    #[monoio::test]
     async fn inner_works() {
         let s = Inner::new(10);
         for _ in 0..10 {
@@ -1004,12 +1004,12 @@ mod tests {
         }
     }
 
-    #[frosty::test]
+    #[monoio::test]
     async fn inner_release_after_acquire() {
         let s = std::rc::Rc::new(Inner::new(0));
 
         let s_move = s.clone();
-        let join = frosty::spawn(async move {
+        let join = monoio::spawn(async move {
             let _ = s_move.acquire(1).await.unwrap();
             let _ = s_move.acquire(1).await.unwrap();
         });
@@ -1017,7 +1017,7 @@ mod tests {
         join.await;
     }
 
-    #[frosty::test]
+    #[monoio::test]
     async fn it_works() {
         let s = Semaphore::new(0);
         s.add_permits(1);

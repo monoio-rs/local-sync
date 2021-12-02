@@ -12,3 +12,8 @@ Oneshot channel which can be send and receive data only one time. Also, it can b
 
 ## Semaphore
 You can async wait permits and add permits with Semaphore.
+
+## Licenses
+Local-sync is licensed under the MIT license or Apache license.
+
+During developing we referenced a lot from Tokio. We would like to thank the authors of the projects.

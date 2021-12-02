@@ -52,7 +52,7 @@ impl<T> Rx<T> {
 mod tests {
     use super::channel;
 
-    #[frosty::test]
+    #[monoio::test]
     async fn tets_unbounded_channel() {
         let (tx, mut rx) = channel();
         tx.send(1).unwrap();

@@ -220,7 +220,7 @@ mod tests {
     use crate::semaphore::Inner;
     use futures_util::future::poll_fn;
 
-    #[frosty::test]
+    #[monoio::test]
     async fn test_chan() {
         let semaphore = Inner::new(1);
         let (tx, mut rx) = channel::<u32, _>(semaphore);

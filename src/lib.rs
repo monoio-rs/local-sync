@@ -1,6 +1,6 @@
 //! Local Sync is a crate that providing non-thread-safe data structures useful
 //! for async programming.
-//! If you use a runtime with thread-per-core model(for example the Frosty), you
+//! If you use a runtime with thread-per-core model(for example the Monoio), you
 //! may use this crate to avoid the cost of communicating across threads.
 
 // shared basic data structure

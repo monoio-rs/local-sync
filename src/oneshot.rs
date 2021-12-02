@@ -14,11 +14,11 @@
 //! ```
 //! use local_sync::oneshot;
 //!
-//! #[frosty::main]
+//! #[monoio::main]
 //! async fn main() {
 //!     let (tx, rx) = oneshot::channel();
 //!
-//!     frosty::spawn(async move {
+//!     monoio::spawn(async move {
 //!         if let Err(_) = tx.send(3) {
 //!             println!("the receiver dropped");
 //!         }
@@ -37,11 +37,11 @@
 //! ```
 //! use local_sync::oneshot;
 //!
-//! #[frosty::main]
+//! #[monoio::main]
 //! async fn main() {
 //!     let (tx, rx) = oneshot::channel::<u32>();
 //!
-//!     frosty::spawn(async move {
+//!     monoio::spawn(async move {
 //!         drop(tx);
 //!     });
 //!
@@ -80,11 +80,11 @@ pub struct Sender<T> {
 /// ```
 /// use local_sync::oneshot;
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel();
 ///
-///     frosty::spawn(async move {
+///     monoio::spawn(async move {
 ///         if let Err(_) = tx.send(3) {
 ///             println!("the receiver dropped");
 ///         }
@@ -103,11 +103,11 @@ pub struct Sender<T> {
 /// ```
 /// use local_sync::oneshot;
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel::<u32>();
 ///
-///     frosty::spawn(async move {
+///     monoio::spawn(async move {
 ///         drop(tx);
 ///     });
 ///
@@ -228,11 +228,11 @@ struct State(usize);
 /// ```
 /// use local_sync::oneshot;
 ///
-/// #[frosty::main]
+/// #[monoio::main]
 /// async fn main() {
 ///     let (tx, rx) = oneshot::channel();
 ///
-///     frosty::spawn(async move {
+///     monoio::spawn(async move {
 ///         if let Err(_) = tx.send(3) {
 ///             println!("the receiver dropped");
 ///         }
@@ -285,11 +285,11 @@ impl<T> Sender<T> {
     /// ```
     /// use local_sync::oneshot;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, rx) = oneshot::channel();
     ///
-    ///     frosty::spawn(async move {
+    ///     monoio::spawn(async move {
     ///         if let Err(_) = tx.send(3) {
     ///             println!("the receiver dropped");
     ///         }
@@ -339,11 +339,11 @@ impl<T> Sender<T> {
     /// ```
     /// use local_sync::oneshot;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (mut tx, rx) = oneshot::channel::<()>();
     ///
-    ///     frosty::spawn(async move {
+    ///     monoio::spawn(async move {
     ///         drop(rx);
     ///     });
     ///
@@ -356,19 +356,19 @@ impl<T> Sender<T> {
     ///
     /// ```
     /// use local_sync::oneshot;
-    /// use frosty::time::{self, Duration};
+    /// use monoio::time::{self, Duration};
     ///
     /// async fn compute() -> String {
     ///     // Complex computation returning a `String`
     /// # "hello".to_string()
     /// }
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (mut tx, rx) = oneshot::channel();
     ///
-    ///     frosty::spawn(async move {
-    ///         frosty::select! {
+    ///     monoio::spawn(async move {
+    ///         monoio::select! {
     ///             _ = tx.closed() => {
     ///                 // The receiver dropped, no need to do any further work
     ///             }
@@ -405,7 +405,7 @@ impl<T> Sender<T> {
     /// ```
     /// use local_sync::oneshot;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, rx) = oneshot::channel();
     ///
@@ -451,11 +451,11 @@ impl<T> Sender<T> {
     ///
     /// use futures_util::future::poll_fn;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (mut tx, mut rx) = oneshot::channel::<()>();
     ///
-    ///     frosty::spawn(async move {
+    ///     monoio::spawn(async move {
     ///         rx.close();
     ///     });
     ///
@@ -540,7 +540,7 @@ impl<T> Receiver<T> {
     /// use local_sync::oneshot;
     /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -563,7 +563,7 @@ impl<T> Receiver<T> {
     /// ```
     /// use local_sync::oneshot;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -605,7 +605,7 @@ impl<T> Receiver<T> {
     /// use local_sync::oneshot;
     /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel();
     ///
@@ -631,7 +631,7 @@ impl<T> Receiver<T> {
     /// use local_sync::oneshot;
     /// use local_sync::oneshot::error::TryRecvError;
     ///
-    /// #[frosty::main]
+    /// #[monoio::main]
     /// async fn main() {
     ///     let (tx, mut rx) = oneshot::channel::<()>();
     ///
@@ -894,10 +894,10 @@ impl fmt::Debug for State {
 mod tests {
     use super::channel;
 
-    #[frosty::test]
+    #[monoio::test]
     async fn it_works() {
         let (tx, rx) = channel();
-        let join = frosty::spawn(async move { rx.await });
+        let join = monoio::spawn(async move { rx.await });
         tx.send(1).unwrap();
         assert_eq!(join.await.unwrap(), 1);
     }
