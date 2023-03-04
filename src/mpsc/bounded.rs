@@ -3,7 +3,6 @@ use crate::semaphore::Inner;
 use futures_util::future::poll_fn;
 use std::task::{Context, Poll};
 
-#[derive(Clone)]
 pub struct Tx<T>(chan::Tx<T, Inner>);
 
 pub struct Rx<T>(chan::Rx<T, Inner>);
@@ -32,6 +31,12 @@ impl<T> Tx<T> {
 
     pub fn same_channel(&self, other: &Self) -> bool {
         self.0.same_channel(&other.0)
+    }
+}
+
+impl<T> Clone for Tx<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
