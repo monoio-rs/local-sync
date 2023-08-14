@@ -21,7 +21,7 @@ where
 pub(crate) struct Chan<T, S: Semaphore> {
     queue: RefCell<Queue<T>>,
     pub(crate) semaphore: S,
-    rx_waker: Cell<Option<Waker>>,
+    rx_waker: RefCell<Option<Waker>>,
     tx_count: Cell<usize>,
 }
 
@@ -56,7 +56,7 @@ where
         Self {
             queue,
             semaphore,
-            rx_waker: Cell::new(None),
+            rx_waker: RefCell::new(None),
             tx_count: Cell::new(0),
         }
     }
@@ -152,7 +152,15 @@ where
     S: Semaphore,
 {
     fn drop(&mut self) {
-        self.chan.tx_count.set(self.chan.tx_count.get() - 1);
+        let cnt = self.chan.tx_count.get();
+        self.chan.tx_count.set(cnt - 1);
+
+        if cnt == 1 {
+            self.chan.semaphore.close();
+            if let Some(rx_waker) = self.chan.rx_waker.take() {
+                rx_waker.wake();
+            }
+        }
     }
 }
 
@@ -188,7 +196,17 @@ where
         if self.chan.tx_count.get() == 0 {
             return Poll::Ready(None);
         }
-        self.chan.rx_waker.replace(Some(cx.waker().clone()));
+        let mut borrowed = self.chan.rx_waker.borrow_mut();
+        match borrowed.as_mut() {
+            Some(inner) => {
+                if !inner.will_wake(cx.waker()) {
+                    *inner = cx.waker().clone();
+                }
+            }
+            None => {
+                *borrowed = Some(cx.waker().clone());
+            }
+        }
         Poll::Pending
     }
 
