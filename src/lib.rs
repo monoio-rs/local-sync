@@ -15,6 +15,9 @@ pub mod mpsc;
 // OneshotChannel
 pub mod oneshot;
 
+// stream wrapper for BoundedChannel and UnboundedChannel
+pub mod stream_wrappers;
+
 // OnceCell
 mod once_cell;
 pub use once_cell::{OnceCell, SetError};
