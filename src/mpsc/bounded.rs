@@ -1,6 +1,8 @@
 use super::chan::{self, SendError, TryRecvError};
 use crate::semaphore::Inner;
+use futures_core::Stream;
 use futures_util::future::poll_fn;
+use std::pin::Pin;
 use std::task::{Context, Poll};
 
 pub struct Tx<T>(chan::Tx<T, Inner>);
@@ -55,6 +57,14 @@ impl<T> Rx<T> {
 
     pub fn close(&mut self) {
         self.0.close()
+    }
+}
+
+impl<T> Stream for Rx<T> {
+    type Item = T;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.poll_recv(cx)
     }
 }
 
