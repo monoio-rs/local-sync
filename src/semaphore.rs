@@ -401,15 +401,17 @@ impl Drop for Acquire<'_> {
             return;
         }
 
-        // This is where we ensure safety. The future is being dropped,
-        // which means we must ensure that the waiter entry is no longer stored
-        // in the linked list.
-        let mut waiters = self.semaphore.waiters.borrow_mut();
+        {
+            // This is where we ensure safety. The future is being dropped,
+            // which means we must ensure that the waiter entry is no longer stored
+            // in the linked list.
+            let mut waiters = self.semaphore.waiters.borrow_mut();
 
-        // remove the entry from the list
-        let node = NonNull::from(&mut self.node);
-        // Safety: we have locked the wait list.
-        unsafe { waiters.queue.remove(node) };
+            // remove the entry from the list
+            let node = NonNull::from(&mut self.node);
+            // Safety: we have locked the wait list.
+            unsafe { waiters.queue.remove(node) };
+        }
 
         let acquired_permits = self.num_permits as usize - *self.node.state.borrow();
         if acquired_permits > 0 {
