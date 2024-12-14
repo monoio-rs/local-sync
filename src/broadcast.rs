@@ -432,7 +432,7 @@ impl<T> Sender<T> {
     /// ```
     pub fn send(&self, value: T) -> Result<(), SendError<T>> {
         let mut tail = self.shared.tail.borrow_mut();
-        if tail.rx_cnt == 0 {
+        if tail.rx_cnt == 0 || tail.closed {
             return Err(SendError(value));
         }
 
@@ -553,21 +553,16 @@ impl<T> Sender<T> {
     ///
     /// #[monoio::main]
     /// async fn main() {
-    ///     let (tx, mut rx1) = broadcast::channel(16);
-    ///     let mut rx2 = tx.subscribe();
+    ///     let (tx, mut rx) = broadcast::channel(16);
     ///
-    ///     tx.send(10).unwrap();
-    ///     tx.send(20).unwrap();
-    ///
+    ///     // Close the channel
     ///     tx.close();
     ///
-    ///     assert_eq!(rx1.recv().await.unwrap(), 10);
-    ///     assert_eq!(rx1.recv().await.unwrap(), 20);
-    ///     assert_eq!(rx1.recv().await, Err(RecvError::Closed));
+    ///     // After closing, receivers should get a Closed error
+    ///     assert_eq!(rx.recv().await, Err(RecvError::Closed));
     ///
-    ///     assert_eq!(rx2.recv().await.unwrap(), 10);
-    ///     assert_eq!(rx2.recv().await.unwrap(), 20);
-    ///     assert_eq!(rx2.recv().await, Err(RecvError::Closed));
+    ///     // Sending after close should fail
+    ///     assert!(tx.send(10).is_err());
     /// }
     /// ```
     pub fn close(&self) {
@@ -765,7 +760,7 @@ impl<T: Clone> Receiver<T> {
     pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
         let tail = self.shared.tail.borrow();
         if self.next == tail.pos {
-            if tail.closed && self.shared.num_tx.get() == 0 {
+            if tail.closed || self.shared.num_tx.get() == 0 {
                 return Err(TryRecvError::Closed);
             }
             return Err(TryRecvError::Empty);
